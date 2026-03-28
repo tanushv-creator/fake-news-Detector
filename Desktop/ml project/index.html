@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fake News Detector — ML Lab Project</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --accent: #00e5a0;
+    --accent2: #ff4d6d;
+    --accent3: #6c63ff;
+    --text: #f0f0f5;
+    --muted: #8888a0;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+  /* NAV */
+  nav {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  nav .container { display: flex; align-items: center; justify-content: space-between; }
+  .nav-logo {
+    font-family: var(--font-head);
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* HERO */
+  .hero {
+    padding: 7rem 0 5rem;
+    position: relative;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.2);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 100px;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s ease both;
+  }
+  .hero-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2.8rem, 6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  h1 .accent { color: var(--accent); }
+  h1 .accent2 { color: var(--accent2); }
+  .hero-sub {
+    margin-top: 1.5rem;
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 520px;
+    font-weight: 300;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+  .hero-meta {
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    animation: fadeUp 0.6s 0.25s ease both;
+  }
+  .hero-meta span { color: var(--accent3); }
+  .hero-actions {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-top: 2.5rem;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.6rem;
+    border-radius: 8px;
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0a0f;
+  }
+  .btn-primary:hover { background: #00ffb3; transform: translateY(-2px); }
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: rgba(255,255,255,0.25); background: var(--card); transform: translateY(-2px); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 4rem 0;
+    animation: fadeUp 0.6s 0.35s ease both;
+  }
+  .stat {
+    background: var(--card);
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* SECTION TITLES */
+  .section { padding: 4rem 0; }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .section-title {
+    font-family: var(--font-head);
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin-bottom: 2.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* PIPELINE */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  .pipe-step {
+    flex: 1;
+    min-width: 140px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-right: none;
+    padding: 1.5rem 1rem;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .pipe-step:first-child { border-radius: 10px 0 0 10px; }
+  .pipe-step:last-child  { border-radius: 0 10px 10px 0; border-right: 1px solid var(--border); }
+  .pipe-step:hover { background: #1f1f2e; }
+  .pipe-step::after {
+    content: '→';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 1.1rem;
+    z-index: 2;
+  }
+  .pipe-step:last-child::after { display: none; }
+  .pipe-icon {
+    font-size: 1.4rem;
+    margin-bottom: 0.6rem;
+  }
+  .pipe-name {
+    font-family: var(--font-head);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+  .pipe-desc {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* TECH STACK */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .tech-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .tech-card:hover { border-color: rgba(0,229,160,0.3); transform: translateY(-3px); }
+  .tech-card-top {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .tech-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .tech-name {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .tech-role { font-size: 0.76rem; color: var(--muted); }
+
+  /* DEMO */
+  .demo-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .demo-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28c840; }
+  .demo-body { padding: 1.5rem; }
+  .demo-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    padding: 1rem;
+    resize: vertical;
+    min-height: 100px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: rgba(0,229,160,0.4); }
+  .demo-or {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    margin: 0.75rem 0;
+  }
+  input[type="url"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="url"]:focus { border-color: rgba(0,229,160,0.4); }
+  .demo-run {
+    margin-top: 1.25rem;
+    width: 100%;
+    padding: 0.85rem;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+  }
+  .demo-run:hover { background: #00ffb3; transform: translateY(-1px); }
+  .demo-run:active { transform: scale(0.98); }
+
+  .result-box {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+  }
+  .result-box.visible { display: block; animation: fadeUp 0.4s ease; }
+  .result-header {
+    padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .result-header.real { background: rgba(0,229,160,0.1); border-bottom: 1px solid rgba(0,229,160,0.15); }
+  .result-header.fake { background: rgba(255,77,109,0.1); border-bottom: 1px solid rgba(255,77,109,0.15); }
+  .result-verdict {
+    font-family: var(--font-head);
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+  }
+  .result-verdict.real { color: var(--accent); }
+  .result-verdict.fake { color: var(--accent2); }
+  .result-score {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .result-body { padding: 1.25rem; background: var(--surface); }
+  .score-bar-wrap { margin-bottom: 1rem; }
+  .score-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem; color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-family: var(--font-mono);
+  }
+  .score-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+  }
+  .score-bar-fill.real { background: var(--accent); }
+  .score-bar-fill.fake { background: var(--accent2); }
+  .result-explanation {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+  }
+
+  /* NOTE */
+  .note {
+    background: rgba(108,99,255,0.08);
+    border: 1px solid rgba(108,99,255,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    font-size: 0.83rem;
+    color: #a8a3f5;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+    margin-top: 4rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+  }
+  footer span { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="nav-logo">FND // ML Lab</div>
+    <div class="nav-links">
+      <a href="#pipeline">Pipeline</a>
+      <a href="#stack">Stack</a>
+      <a href="#demo">Demo</a>
+      <a href="https://github.com/tanushv-creator/fake-news-Detector" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">ML Lab Project</div>
+      <h1>
+        Detect <span class="accent2">Fake</span> News<br/>
+        with <span class="accent">Machine Learning</span>
+      </h1>
+      <p class="hero-sub">
+        A TF-IDF + Random Forest pipeline that classifies news articles as real or fake — with a credibility score and explanation.
+      </p>
+      <p class="hero-meta">
+        by <span>tanushv-creator</span> &nbsp;·&nbsp; TF-IDF + Random Forest &nbsp;·&nbsp; WELFake Dataset
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/tanushv-creator/fake-news-Detector" target="_blank" class="btn btn-primary">View on GitHub →</a>
+        <a href="fake_news_detector.ipynb" class="btn btn-outline">Open Notebook</a>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-num">~95%</div>
+          <div class="stat-label">Accuracy</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">0.98</div>
+          <div class="stat-label">ROC-AUC</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">72k</div>
+          <div class="stat-label">Articles</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">50k</div>
+          <div class="stat-label">TF-IDF Features</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">200</div>
+          <div class="stat-label">Trees (RF)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pipeline">
+    <div class="container">
+      <div class="section-label">// how it works</div>
+      <h2 class="section-title">ML Pipeline</h2>
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="pipe-icon">🌐</div>
+          <div class="pipe-name">Data Fetch</div>
+          <div class="pipe-desc">WELFake dataset pulled from web — 72k real & fake articles</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-icon">🧹</div>
+          <div class="pipe-name">Preprocess</div>
+          <div class="pipe-desc">Lowercase, remove URLs, stopwords, stemming via NLTK</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-icon">📊</div>
+          <div class="pipe-name">TF-IDF</div>
+          <div class="pipe-desc">50k features, unigrams + bigrams, sublinear normalization</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-icon">🌲</div>
+          <div class="pipe-name">Random Forest</div>
+          <div class="pipe-desc">200 trees, balanced class weights, all CPU cores</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-icon">🎯</div>
+          <div class="pipe-name">Predict</div>
+          <div class="pipe-desc">Credibility score 0–100 with real/fake probability</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="stack">
+    <div class="container">
+      <div class="section-label">// built with</div>
+      <h2 class="section-title">Tech Stack</h2>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#00e5a0"></div>
+            <div class="tech-name">scikit-learn</div>
+          </div>
+          <div class="tech-role">TF-IDF vectorizer + Random Forest classifier</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#6c63ff"></div>
+            <div class="tech-name">NLTK</div>
+          </div>
+          <div class="tech-role">Stopword removal + Porter stemmer</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#ff4d6d"></div>
+            <div class="tech-name">pandas / numpy</div>
+          </div>
+          <div class="tech-role">Data loading, cleaning, manipulation</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#ffbd2e"></div>
+            <div class="tech-name">matplotlib / seaborn</div>
+          </div>
+          <div class="tech-role">EDA charts, confusion matrix, ROC curve</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#00e5a0"></div>
+            <div class="tech-name">joblib</div>
+          </div>
+          <div class="tech-role">Model serialization (.pkl)</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-top">
+            <div class="tech-dot" style="background:#a0c4ff"></div>
+            <div class="tech-name">Jupyter Notebook</div>
+          </div>
+          <div class="tech-role">End-to-end interactive lab notebook</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="demo">
+    <div class="container">
+      <div class="section-label">// try it out</div>
+      <h2 class="section-title">Live Demo</h2>
+      <div class="demo-box">
+        <div class="demo-topbar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+        </div>
+        <div class="demo-body">
+          <div class="demo-label">PASTE ARTICLE TEXT</div>
+          <textarea id="articleText" placeholder="Paste a news article here to check its credibility..."></textarea>
+          <div class="demo-or">— or —</div>
+          <div class="demo-label">ENTER ARTICLE URL</div>
+          <input type="url" id="articleUrl" placeholder="https://www.bbc.com/news/..." />
+          <button class="demo-run" onclick="runDemo()">Analyze Article →</button>
+
+          <div class="result-box" id="resultBox">
+            <div class="result-header" id="resultHeader">
+              <div class="result-verdict" id="resultVerdict"></div>
+              <div class="result-score" id="resultScore"></div>
+            </div>
+            <div class="result-body">
+              <div class="score-bar-wrap">
+                <div class="score-bar-label">
+                  <span>Credibility Score</span>
+                  <span id="scoreVal"></span>
+                </div>
+                <div class="score-bar-track">
+                  <div class="score-bar-fill" id="scoreFill" style="width:0%"></div>
+                </div>
+              </div>
+              <div class="score-bar-wrap">
+                <div class="score-bar-label">
+                  <span>Fake Probability</span>
+                  <span id="fakeVal"></span>
+                </div>
+                <div class="score-bar-track">
+                  <div class="score-bar-fill fake" id="fakeFill" style="width:0%"></div>
+                </div>
+              </div>
+              <div class="result-explanation" id="resultExplanation"></div>
+            </div>
+          </div>
+
+          <div class="note">
+            ⚡ This demo is a UI mockup. To run the actual ML model, open
+            <strong>fake_news_detector.ipynb</strong> in Jupyter and use the
+            <code>predict_news()</code> function in the last cell.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    Built for <span>ML Lab</span> · TF-IDF + Random Forest · WELFake Dataset ·
+    <a href="https://github.com/tanushv-creator/fake-news-Detector" target="_blank" style="color: var(--accent); text-decoration:none;">github.com/tanushv-creator</a>
+  </div>
+</footer>
+
+<script>
+  const explanations = {
+    real: [
+      "The article uses formal, measured language consistent with verified journalism. Key terms align with known credible reporting patterns.",
+      "Sentence structure and vocabulary closely match real news sources in the training data. High lexical diversity detected.",
+      "The writing style, citation patterns, and factual framing suggest credible reporting."
+    ],
+    fake: [
+      "The text contains emotionally charged language and sensationalist framing — common indicators of misinformation.",
+      "Several high-weight TF-IDF features matched patterns frequently found in fake news articles in the training set.",
+      "Unusual claim density and absence of attributable sources flags this as potentially unreliable."
+    ]
+  };
+
+  function runDemo() {
+    const text = document.getElementById('articleText').value.trim();
+    const url  = document.getElementById('articleUrl').value.trim();
+
+    if (!text && !url) {
+      alert('Please paste article text or enter a URL.');
+      return;
+    }
+
+    const btn = document.querySelector('.demo-run');
+    btn.textContent = 'Analyzing...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      // Simulated prediction for demo UI
+      const seed = (text + url).split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+      const realProb = 35 + (seed % 55);
+      const fakeProb = 100 - realProb;
+      const isReal   = realProb >= 50;
+      const label    = isReal ? 'REAL' : 'FAKE';
+
+      const box    = document.getElementById('resultBox');
+      const header = document.getElementById('resultHeader');
+      const verdict = document.getElementById('resultVerdict');
+      const score  = document.getElementById('resultScore');
+      const fill   = document.getElementById('scoreFill');
+      const fakeFill = document.getElementById('fakeFill');
+      const scoreVal = document.getElementById('scoreVal');
+      const fakeVal  = document.getElementById('fakeVal');
+      const exp    = document.getElementById('resultExplanation');
+
+      verdict.textContent = (isReal ? '✅ ' : '❌ ') + label;
+      verdict.className   = 'result-verdict ' + (isReal ? 'real' : 'fake');
+      header.className    = 'result-header ' + (isReal ? 'real' : 'fake');
+      score.textContent   = 'Confidence: ' + (realProb > 70 || fakeProb > 70 ? 'High' : 'Uncertain');
+      scoreVal.textContent = realProb + '/100';
+      fakeVal.textContent  = fakeProb + '%';
+      fill.className = 'score-bar-fill ' + (isReal ? 'real' : 'fake');
+
+      box.classList.add('visible');
+      requestAnimationFrame(() => {
+        fill.style.width = realProb + '%';
+        fakeFill.style.width = fakeProb + '%';
+      });
+
+      const pool = isReal ? explanations.real : explanations.fake;
+      exp.textContent = pool[seed % pool.length];
+
+      btn.textContent = 'Analyze Article →';
+      btn.disabled = false;
+    }, 1200);
+  }
+
+  document.getElementById('articleText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.ctrlKey) runDemo();
+  });
+</script>
+</body>
+</html>
